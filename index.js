@@ -34,6 +34,38 @@ app.post('/signup', (req, res, next) => {
 })
 
 
+app.post('/login', (req, res, next) => {
+     const { email, password } = req.body
+     const query = `
+     SELECT
+          email,
+          password,
+          CONCAT(first_name," ",last_name) as name
+          
+     FROM
+          users
+     WHERE
+          email=? AND
+          password=?  
+     `
+     connection.execute(query, [email, password], (err, val) => {
+          if (err) {
+               res.json({ err })
+          }
+          else {
+               if (val.length) {
+                    res.json({ message: "Login Successfully!", user: val })
+               }
+               else {
+                    res.json({ message: "user not found!" })
+               }
+          }
+
+
+     })
+
+})
+
 
 connection.connect((err) => {
      if (err) {
