@@ -124,6 +124,39 @@ app.get('/profile/:id', (req, res) => {
      });
 });
 
+app.get('/search', (req, res, next) => {
+    const { searchKey } = req.query;
+
+    if (!searchKey) {
+        return res.status(400).json({ message: 'searchKey query parameter is required' });
+    }
+
+    const query = `
+        SELECT
+            id,
+            CONCAT(first_name, " ", last_name) AS name,
+            email,
+            date_of_birth,
+            FLOOR(DATEDIFF(NOW(), date_of_birth) / 365.25) AS age
+        FROM
+            users
+        WHERE
+            first_name LIKE ? OR
+            last_name LIKE ? OR
+            email LIKE ?
+    `;
+
+    const likeSearchKey = `%${searchKey}%`;
+
+    connection.execute(query, [likeSearchKey, likeSearchKey, likeSearchKey], (err, val) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+
+        res.status(200).json({ results: val });
+    });
+});
 
 connection.connect((err) => {
      if (err) {
