@@ -66,6 +66,27 @@ app.post('/login', (req, res, next) => {
 
 })
 
+app.patch('/update/:id', (req, res) => {
+     const { id } = req.params
+     const { firstName, lastName, password } = req.body
+     const query = `
+          UPDATE users
+            SET first_name=?, last_name=?, password=?
+            WHERE id=?
+     
+     `
+     connection.execute(query, [firstName, lastName, password, id], (err, val) => {
+          if (err) {
+               res.json({ err })
+          }
+          else {
+               res.json({ val })
+          }
+
+     })
+
+
+})
 
 connection.connect((err) => {
      if (err) {
