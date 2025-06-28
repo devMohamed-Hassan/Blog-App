@@ -69,6 +69,9 @@ app.post('/login', (req, res, next) => {
 app.patch('/update/:id', (req, res) => {
      const { id } = req.params
      const { firstName, lastName, password } = req.body
+     if (!firstName || !lastName || !password) {
+          return res.status(400).json({ message: 'firstName, lastName, and password are required' });
+     }
      const query = `
           UPDATE users
             SET first_name=?, last_name=?, password=?
@@ -77,16 +80,50 @@ app.patch('/update/:id', (req, res) => {
      `
      connection.execute(query, [firstName, lastName, password, id], (err, val) => {
           if (err) {
-               res.json({ err })
+               res.status(500).json({ message: 'Internal server error' })
           }
           else {
-               res.json({ val })
+               if (val.affectedRows) {
+                    res.status(200).json({ message: 'User updated successfully' })
+               }
+               else {
+                    res.status(404).json({ message: 'User not found' })
+               }
           }
 
      })
 
 
 })
+
+app.get('/profile/:id', (req, res) => {
+     const { id } = req.params;
+     const query = `
+        SELECT
+            id,
+            CONCAT(first_name, " ", last_name) AS name,
+            date_of_birth,
+            FLOOR(DATEDIFF(NOW(), date_of_birth) / 365.25) AS age_in_years
+        FROM
+            users
+        WHERE
+            id=?
+    `;
+
+     connection.execute(query, [id], (err, val) => {
+          if (err) {
+               console.error('Database error:', err);
+               return res.status(500).json({ message: 'Internal server error' });
+          }
+
+          if (val.length === 0) {
+               return res.status(404).json({ message: 'User not found' });
+          }
+
+          res.status(200).json({ user: val[0] });
+     });
+});
+
 
 connection.connect((err) => {
      if (err) {
