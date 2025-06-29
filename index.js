@@ -167,9 +167,9 @@ app.post('/create-blog/:userId', (req, res, next) => {
           return res.status(400).json({ message: 'title and body are required' })
      }
 
-    const query = `
+     const query = `
         INSERT INTO blogs (title, body, user_id, created_at, updated_at)
-        VALUES (?, ?, ?, NOW(), NOW())
+        VALUES (?, ?, ?)
     `
 
      connection.execute(query, [title, body, userId], (err, result) => {
@@ -184,6 +184,37 @@ app.post('/create-blog/:userId', (req, res, next) => {
                message: 'Blog created successfully',
                blogId: result.insertId
           });
+     });
+});
+
+app.patch('/update-blog/:id', (req, res, next) => {
+     const { id } = req.params;
+     const { title, body } = req.body;
+
+     if (!title || !body) {
+          return res.status(400).json({ message: 'title and body are required' });
+     }
+
+     const query = `
+        UPDATE
+          blogs
+        SET
+          title=?, body=?
+        WHERE
+          id=?
+    `;
+
+     connection.execute(query, [title, body, id], (err, result) => {
+          if (err) {
+               console.error('Database error:', err);
+               return res.status(500).json({ message: 'Internal server error' });
+          }
+
+          if (result.affectedRows === 0) {
+               return res.status(404).json({ message: 'Blog not found' });
+          }
+
+          res.status(200).json({ message: 'Blog updated successfully' });
      });
 });
 
