@@ -220,32 +220,49 @@ app.patch('/update-blog/:id', (req, res, next) => {
 
 
 app.get('/get-blogs', (req, res) => {
-     const query = `
-        SELECT
-            blog.id AS blog_id,
-            blog.title AS title,
-            blog.body AS body,
-            blog.user_id AS user_id,
-            user.id AS user_id,
-            CONCAT(user.first_name, " ", user.last_name) AS name,
-            FLOOR(DATEDIFF(NOW(), user.date_of_birth) / 365.25) AS age
-        FROM
-            blogs AS blog
-        LEFT JOIN
-            users AS user
-        ON
-            blog.user_id = user.id
+     const { id } = req.query;
+
+     let query = `
+          SELECT
+               blog.id AS blog_id,
+               blog.title AS title,
+               blog.body AS body,
+               blog.user_id AS user_id,
+               user.id AS user_id,
+               CONCAT(user.first_name, " ", user.last_name) AS name,
+               FLOOR(DATEDIFF(NOW(), user.date_of_birth) / 365.25) AS age
+          FROM
+               blogs AS blog
+          LEFT JOIN
+               users AS user
+          ON
+               blog.user_id = user.id
     `;
 
-     connection.execute(query, (err, data) => {
+     let params = [];
+
+     if (id) {
+          query += ` WHERE blog.id = ?`;
+          params.push(id);
+     }
+
+     connection.execute(query, params, (err, data) => {
           if (err) {
                console.error('Database error:', err);
                return res.status(500).json({ message: 'Internal server error' });
           }
 
-          res.status(200).json({ blogs: data });
+          if (id && data.length === 0) {
+               return res.status(404).json({ message: 'Blog not found' });
+          }
+
+          res.status(200).json(id ? { blog: data[0] } : { blogs: data });
      });
 });
+
+
+
+
 
 
 
