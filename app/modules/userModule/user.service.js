@@ -1,55 +1,116 @@
 const connection = require('../../DB/DBConnection')
 
 module.exports.signup = (req, res, next) => {
-     const { firstName, lastName, email, password } = req.body;
-     const query = `
-     INSERT INTO
-          users(first_name,last_name,email,password)
-     VALUES
-          (?,?,?,?)
-     `
-     connection.execute(query, [firstName, lastName, email, password], (err, val) => {
+     const { firstName, lastName, email, password, dateOfBirth } = req.body;
+
+     if (!firstName || !lastName || !email || !password || !dateOfBirth) {
+          return res.status(400).json({
+               success: false,
+               message: "All fields are required: firstName, lastName, email, password, dateOfBirth.",
+          });
+     }
+     const checkQuery = `SELECT id FROM users WHERE email = ? LIMIT 1`;
+     connection.execute(checkQuery, [email], (err, results) => {
           if (err) {
-               res.json({ err })
-          } else {
-               res.json({ message: "Done", val })
+               console.error("Database error during email check:", err);
+               return res.status(500).json({
+                    success: false,
+                    message: "An internal error occurred. Please try again later.",
+               });
           }
 
-     })
+          if (results.length > 0) {
 
-}
+               return res.status(409).json({
+                    success: false,
+                    message: "A user with this email already exists.",
+               });
+          }
+
+          const insertQuery = `
+               INSERT INTO
+                    users(first_name, last_name, email, password, date_of_birth)
+               VALUES
+                    (?, ?, ?, ?, ?)
+        `;
+
+          connection.execute(
+               insertQuery,
+               [firstName, lastName, email, password, dateOfBirth],
+               (err, val) => {
+                    if (err) {
+                         console.error("Database error during signup:", err);
+                         return res.status(500).json({
+                              success: false,
+                              message: "An error occurred while creating your account. Please try again later.",
+                         });
+                    }
+
+                    return res.status(201).json({
+                         success: true,
+                         message: "Account created successfully.",
+                         userId: val.insertId,
+                    });
+               }
+          );
+     });
+};
+
+
 
 module.exports.login = (req, res, next) => {
-     const { email, password } = req.body
+     const { email, password } = req.body;
+
+     if (!email || !password) {
+          return res.status(400).json({
+               success: false,
+               message: "Email and password are required.",
+          });
+     }
+
      const query = `
-     SELECT
-          email,
-          password,
-          CONCAT(first_name," ",last_name) as name
-          
-     FROM
-          users
-     WHERE
-          email=? AND
-          password=?  
-     `
-     connection.execute(query, [email, password], (err, val) => {
+          SELECT
+               id,
+               email,
+               CONCAT(first_name, " ", last_name) AS name
+          FROM
+               users
+          WHERE
+               email = ? AND password = ?
+          LIMIT 1
+    `;
+
+     connection.execute(query, [email, password], (err, results) => {
           if (err) {
-               res.json({ err })
-          }
-          else {
-               if (val.length) {
-                    res.json({ message: "Login Successfully!", user: val })
-               }
-               else {
-                    res.json({ message: "user not found!" })
-               }
+               console.error("Database error during login:", err);
+               return res.status(500).json({
+                    success: false,
+                    message: "An internal error occurred. Please try again later.",
+               });
           }
 
+          if (results.length === 0) {
+               return res.status(401).json({
+                    success: false,
+                    message: "Invalid email or password.",
+               });
+          }
 
-     })
+          const user = results[0];
 
-}
+          return res.status(200).json({
+               success: true,
+               message: "Login successful.",
+               user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+               },
+          });
+     });
+};
+
+
 module.exports.update = (req, res) => {
      const { id } = req.params
      const { firstName, lastName, password } = req.body
