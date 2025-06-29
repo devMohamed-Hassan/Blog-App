@@ -125,13 +125,13 @@ app.get('/profile/:id', (req, res) => {
 });
 
 app.get('/search', (req, res, next) => {
-    const { searchKey } = req.query;
+     const { searchKey } = req.query;
 
-    if (!searchKey) {
-        return res.status(400).json({ message: 'searchKey query parameter is required' });
-    }
+     if (!searchKey) {
+          return res.status(400).json({ message: 'searchKey query parameter is required' });
+     }
 
-    const query = `
+     const query = `
         SELECT
             id,
             CONCAT(first_name, " ", last_name) AS name,
@@ -146,17 +146,47 @@ app.get('/search', (req, res, next) => {
             email LIKE ?
     `;
 
-    const likeSearchKey = `%${searchKey}%`;
+     const likeSearchKey = `%${searchKey}%`;
 
-    connection.execute(query, [likeSearchKey, likeSearchKey, likeSearchKey], (err, val) => {
-        if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ message: 'Internal server error' });
-        }
+     connection.execute(query, [likeSearchKey, likeSearchKey, likeSearchKey], (err, val) => {
+          if (err) {
+               console.error('Database error:', err);
+               return res.status(500).json({ message: 'Internal server error' });
+          }
 
-        res.status(200).json({ results: val });
-    });
+          res.status(200).json({ results: val });
+     });
 });
+
+
+app.post('/create-blog/:userId', (req, res, next) => {
+     const { title, body } = req.body
+     const { userId } = req.params
+
+     if (!title || !body) {
+          return res.status(400).json({ message: 'title and body are required' })
+     }
+
+    const query = `
+        INSERT INTO blogs (title, body, user_id, created_at, updated_at)
+        VALUES (?, ?, ?, NOW(), NOW())
+    `
+
+     connection.execute(query, [title, body, userId], (err, result) => {
+          if (err) {
+               console.error('Database error:', err);
+               if (err.errno === 1452) {
+                    return res.status(404).json({ message: 'User not found. Cannot create blog for non-existent user.' })
+               }
+               return res.status(500).json({ message: 'Internal server error' })
+          }
+          res.status(201).json({
+               message: 'Blog created successfully',
+               blogId: result.insertId
+          });
+     });
+});
+
 
 connection.connect((err) => {
      if (err) {
@@ -168,8 +198,6 @@ connection.connect((err) => {
      }
 
 })
-
-
 
 
 app.listen(port, () => {
